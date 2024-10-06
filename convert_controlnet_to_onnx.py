@@ -98,6 +98,18 @@ def convert_models(model_path: str, output_path: str, opset: int, fp16: bool, at
     device = "cpu"
         
     cnet_path = output_path / "controlnet" / "model.onnx"
+
+    #! This is a workaround for the current implementation of torch.onnx.dynamo_export
+    # export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
+    # input_kwargs = 
+    #     "sample": torch.randn(2, 4, 64, 64).to(device=device, dtype=dtype),
+    #     "timestep": torch.randn(2).to(device=device, dtype=dtype),
+    #     "encoder_hidden_states": torch.randn(2, 77, 768).to(device=device, dtype=dtype),
+    #     "controlnet_cond": torch.randn(2, 3, 512,512).to(device=device, dtype=dtype),
+    #     "return_dict": False,
+    # }
+    # onnx_program = torch.onnx.dynamo_export(
+
     onnx_export(
         controlnet,
         model_args=(
@@ -105,16 +117,47 @@ def convert_models(model_path: str, output_path: str, opset: int, fp16: bool, at
             torch.randn(2).to(device=device, dtype=dtype),
             torch.randn(2, 77, 768).to(device=device, dtype=dtype),
             torch.randn(2, 3, 512,512).to(device=device, dtype=dtype),
-            False,
+            1.0,
+            None, None, None, None, None,
+            False, False
         ),
         output_path=cnet_path,
-        ordered_input_names=["sample", "timestep", "encoder_hidden_states", "controlnet_cond","return_dict"],
-        output_names=["down_block_res_samples", "mid_block_res_sample"],  # has to be different from "sample" for correct tracing
+        ordered_input_names=["sample", "timestep", "encoder_hidden_states", "controlnet_cond"],
+
+    
+        output_names=[
+            "down_block_0",
+            "down_block_1",
+            "down_block_2",
+            "down_block_3",
+            "down_block_4",
+            "down_block_5",
+            "down_block_6",
+            "down_block_7",
+            "down_block_8",
+            "down_block_9",
+            "down_block_10",
+            "down_block_11",
+            "mid_block_res_sample",
+        ],  # has to be different from "sample" for correct tracing
         dynamic_axes={
             "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
             "timestep": {0: "batch"},
             "encoder_hidden_states": {0: "batch", 1: "sequence"},
-            "controlnet_cond": {0: "batch", 2: "height", 3: "width"}
+            "controlnet_cond": {0: "batch", 2: "height", 3: "width"},
+            "down_block_0": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_1": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_2": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_3": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_4": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_5": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_6": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_7": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_8": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_9": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_10": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "down_block_11": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "mid_block_res_sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
         },
         opset=opset,
     )
@@ -123,7 +166,7 @@ def convert_models(model_path: str, output_path: str, opset: int, fp16: bool, at
         cnet_path_model_path = str(cnet_path.absolute().as_posix())
         convert_to_fp16(cnet_path_model_path)
     
-    
+    # onnx_program.save(cnet_path.as_posix())
     print("ONNX controlnet saved to ", output_path)
 
 
