@@ -21,10 +21,10 @@ import torch.utils.checkpoint
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.loaders import UNet2DConditionLoadersMixin
 from diffusers.utils import BaseOutput, logging
-from diffusers.models.cross_attention import AttnProcessor
-from diffusers.models.embeddings import GaussianFourierProjection, TimestepEmbedding, Timesteps
+from diffusers.models.attention_processor import AttnProcessor
+from diffusers.models.embeddings import GaussianFourierProjection, TimestepEmbedding, Timesteps, TextImageProjection,  TextTimeEmbedding, TextImageTimeEmbedding, ImageProjection, ImageTimeEmbedding, ImageHintTimeEmbedding
 from diffusers.models.modeling_utils import ModelMixin
-from diffusers.models.unet_2d_blocks import (
+from diffusers.models.unets.unet_2d_blocks import (
     CrossAttnDownBlock2D,
     CrossAttnUpBlock2D,
     DownBlock2D,
@@ -257,7 +257,7 @@ class UNet2DConditionModel_Cnet(ModelMixin, ConfigMixin, UNet2DConditionLoadersM
                 resnet_act_fn=act_fn,
                 resnet_groups=norm_num_groups,
                 cross_attention_dim=cross_attention_dim,
-                attn_num_head_channels=attention_head_dim[i],
+                num_attention_heads=attention_head_dim[i],
                 downsample_padding=downsample_padding,
                 dual_cross_attention=dual_cross_attention,
                 use_linear_projection=use_linear_projection,
@@ -277,7 +277,7 @@ class UNet2DConditionModel_Cnet(ModelMixin, ConfigMixin, UNet2DConditionLoadersM
                 output_scale_factor=mid_block_scale_factor,
                 resnet_time_scale_shift=resnet_time_scale_shift,
                 cross_attention_dim=cross_attention_dim,
-                attn_num_head_channels=attention_head_dim[-1],
+                num_attention_heads=attention_head_dim[-1],
                 resnet_groups=norm_num_groups,
                 dual_cross_attention=dual_cross_attention,
                 use_linear_projection=use_linear_projection,
@@ -335,7 +335,7 @@ class UNet2DConditionModel_Cnet(ModelMixin, ConfigMixin, UNet2DConditionLoadersM
                 resnet_act_fn=act_fn,
                 resnet_groups=norm_num_groups,
                 cross_attention_dim=cross_attention_dim,
-                attn_num_head_channels=reversed_attention_head_dim[i],
+                num_attention_heads=reversed_attention_head_dim[i],
                 dual_cross_attention=dual_cross_attention,
                 use_linear_projection=use_linear_projection,
                 only_cross_attention=only_cross_attention[i],
