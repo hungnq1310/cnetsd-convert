@@ -44,7 +44,8 @@ import onnx
 from onnxruntime.transformers.float16 import convert_float_to_float16
 from diffusers.models import AutoencoderKL
 from diffusers import OnnxRuntimeModel, OnnxStableDiffusionPipeline, StableDiffusionPipeline
-from diffusers.pipelines.stable_diffusion.convert_from_ckpt import load_pipeline_from_original_stable_diffusion_ckpt
+# from diffusers.pipelines.stable_diffusion.convert_from_ckpt import l
+from diffusers.pipelines.stable_diffusion.convert_from_ckpt import download_from_original_stable_diffusion_ckpt
 from unet_2d_condition_cnet import UNet2DConditionModel_Cnet
 
 # To improve future development and testing, warnings should be limited to what is somewhat useful
@@ -215,6 +216,7 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
             "down_block_10": {0: "batch", 2: "height8", 3: "width8"},
             "down_block_11": {0: "batch", 2: "height8", 3: "width8"},
             "mid_block_additional_residual": {0: "batch", 2: "height8", 3: "width8"},
+            "out_sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
         },
         opset=opset,
     )
@@ -286,6 +288,7 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
         output_names=["sample"],
         dynamic_axes={
             "latent_sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
+            "sample": {0: "batch", 1: "channels", 2: "height", 3: "width"},
         },
         opset=opset,
     )
@@ -320,7 +323,6 @@ def convert_models(pipeline: StableDiffusionPipeline, output_path: str, opset: i
     _ = OnnxStableDiffusionPipeline.from_pretrained(output_path,
         provider="DmlExecutionProvider")
     print("ONNX pipeline is loadable")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -444,13 +446,23 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether the attention computation should always be upcasted. Necessary when running SD 2.1"
     )
+    parser.add_argument(
+        "--vae-slicing",
+        action="store_true",
+        help="Enable attention slicing for VAE"
+    )
+    parser.add_argument(
+        "--xformers",
+        action="store_true",
+        help="Enable xformers_memory_efficient_attention"
+    )
 
     args = parser.parse_args()
 
     dtype=torch.float32
     device = "cpu"
     if args.model_path.endswith(".ckpt") or args.model_path.endswith(".safetensors"):
-        pl = load_pipeline_from_original_stable_diffusion_ckpt(
+        pl = download_from_original_stable_diffusion_ckpt(
             checkpoint_path=args.model_path,
             original_config_file=args.ckpt_original_config_file,
             image_size=args.ckpt_image_size,
@@ -498,8 +510,13 @@ if __name__ == "__main__":
             print ("WARNING: attention_slicing max implies --notune")
         pl.enable_attention_slicing(args.attention_slicing)
 
+    if args.vae_slicing:
+        pl.enable_vae_slicing()
+
+    if args.xformers:
+        pl.enable_xformers_memory_efficient_attention()
+
     if args.diffusers_output:
         pl.save_pretrained(args.diffusers_output)
 
     convert_models(pl, args.output_path, args.opset, args.fp16, args.notune or blocktune)
-    
